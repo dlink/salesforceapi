@@ -1,3 +1,13 @@
-Command Line Interface to Salesforce API
+Command Line Interface, and General Purpose Library to Salesforce API.
 
 Requires: Salesforce python toolkit
+
+Usage:
+
+   salesforceapi.py [-v] create <object> <csvfile>
+                         delete <object> <csvfile>
+                         desc <object>
+                         fields <object>
+                         query <querystring>
+                         show objects
+                         update <object> <csvfile>
