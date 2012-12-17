@@ -2,7 +2,7 @@ Command Line Interface, and General Purpose Library to Salesforce API.
 
 Requires: Salesforce python toolkit
 
-Usage:
+Command Line Usage:
 
    salesforceapi.py [-v] create <object> <csvfile>
                          delete <object> <csvfile>
@@ -11,3 +11,71 @@ Usage:
                          query <querystring>
                          show objects
                          update <object> <csvfile>
+
+Programmatic Usage:
+
+class SalesforceApi(__builtin__.object)
+ |  Preside over Salesforce API
+ |  
+ |  Methods defined here:
+ |  
+ |  __init__(self)
+ |  
+ |  create(self, sfobject, header, rows)
+ |      Create new Records. Calls update()
+ |  
+ |  delete(self, sfobject, header, rows)
+ |      Delete Records. Calls update()
+ |  
+ |  desc(self, sfobject, full=False)
+ |      Return Brief Column Description of sfobject
+ |  
+ |  fields(self, sfobject)
+ |      Return Column Data of sfobject
+ |  
+ |  loadCsv(self, csvfile)
+ |      Given a csv filename
+ |      Return a tuple: (header an ARRAY, and
+ |                       rows   an ARRAY of ARRAYS)
+ |  
+ |  process(self, *args)
+ |      Read aguments and process API request
+ |      All requests come thru here
+ |  
+ |  query(self, querystr)
+ |      Return results of a querystr
+ |  
+ |  showObjects(self)
+ |      Return list of all Salesforce Objects
+ |  
+ |  update(self, sfobject, header, rows, action='update')
+ |      Given: sfobject as a STR, 
+ |             header   as an ARRAY, and
+ |             rows     as an ARRAY of Arrays
+ |      
+ |      Behavior: Update rows in Salesforce
+ |                creates success and failure csv output files
+ |      
+ |                Header names much match Salesforce Object field names.
+ |                First column must be the Id column.
+ |      
+ |      Returns:  Message as an Array of 
+ |                Number of successes and failures
+ |                And the names of the output files.
+ |  
+ |  ----------------------------------------------------------------------
+ |  Data descriptors defined here:
+ |  
+ |  __dict__
+ |      dictionary for instance variables (if defined)
+ |  
+ |  __weakref__
+ |      list of weak references to the object (if defined)
+ |  
+ |  connection
+ |      Behavior: Log in to Salesforce
+ |      Return: Handle to connection
+ |  
+ |  wsdl_file
+ |      Return full path to WSDL File
+

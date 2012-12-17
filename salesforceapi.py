@@ -48,32 +48,32 @@ class SalesforceApi(object):
             args = args[1:]
 
         # get command
-        command = self.validate('command', args[0])
+        command = self._validate('command', args[0])
         args = args[1:]
 
         # process command
         if command in ('desc', 'fields'):
-            validate_num_args(command, 1, args)
-            sfobject = self.validate('sfobject', args[0])
+            _validate_num_args(command, 1, args)
+            sfobject = self._validate('sfobject', args[0])
             if command == 'desc':
                 return self.desc(sfobject)
             else:
                 return self.fields(sfobject)
 
         elif command == 'query':
-            validate_num_args(command, 1, args)
-            querystr = self.validate('querystr', args[0])
+            _validate_num_args(command, 1, args)
+            querystr = self._validate('querystr', args[0])
             return self.query(querystr)
             
         elif command == 'show':
-            validate_num_args(command, 1, args)
-            dobj = self.validate('directobject', args[0])
+            _validate_num_args(command, 1, args)
+            dobj = self._validate('directobject', args[0])
             return self.showObjects()
 
         elif command in ('delete', 'create', 'update'):
-            validate_num_args('update', 2, args)
-            sfobject = self.validate('sfobject', args[0])
-            csvfile  = self.validate('csvfile',  args[1])
+            _validate_num_args('update', 2, args)
+            sfobject = self._validate('sfobject', args[0])
+            csvfile  = self._validate('csvfile',  args[1])
             header, rows = self.loadCsv(csvfile)
             if command == 'delete': 
                 return self.delete(sfobject, header, rows)
@@ -170,11 +170,11 @@ class SalesforceApi(object):
         return results
 
     def create(self, sfobject, header, rows):
-        '''Create new Records'''
+        '''Create new Records. Calls update()'''
         return self.update(sfobject, header, rows, action='create')
 
     def delete(self, sfobject, header, rows):
-        '''Delete Records'''
+        '''Delete Records. Calls update()'''
         return self.update(sfobject, header, rows, action='delete')
 
     def update(self, sfobject, header, rows, action='update'):
@@ -237,7 +237,7 @@ class SalesforceApi(object):
                     # Set value:
                     setattr(obj, field, value)
 
-                result = self.doAction(h, obj, action)
+                result = self._doAction(h, obj, action)
 
                 # process results:
                 if result.success:
@@ -278,7 +278,8 @@ class SalesforceApi(object):
             results += [success_msg, failure_msg]
         return results
 
-    def doAction(self, h, obj, action, try_count=0):
+    def _doAction(self, h, obj, action, try_count=0):
+        '''Provide Retry capability, to actual API call.'''
         TRIES = 3
         try_count += 1
         if try_count > 1:
@@ -295,7 +296,7 @@ class SalesforceApi(object):
             if 'INVALID_FIELD' in str(e) or 'INVALID_TYPE' in str(e):
                 raise
             if try_count <= TRIES:
-                return self.doAction(h, obj, action, try_count)
+                return self._doAction(h, obj, action, try_count)
 
 
     def loadCsv(self, csvfile):
@@ -333,7 +334,7 @@ class SalesforceApi(object):
         fp.close()
         return header, rows
     
-    def validate(self, param, value):
+    def _validate(self, param, value):
         emsg = ''
         if param == 'command':
             if value not in COMMANDS:
@@ -360,7 +361,7 @@ class SalesforceApi(object):
 
         return value
 
-def validate_num_args(s, num_args, args):
+def _validate_num_args(s, num_args, args):
     '''Given: The description of a command; The number of arguments required; 
               and A list of arguments
        Behavior: Validate number of arguments. If Okay, do nothing.  Else,
