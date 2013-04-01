@@ -5,9 +5,10 @@ import os
 import re
 import csv
 import copy
-import yaml
 
 from sforce.enterprise import SforceEnterpriseClient
+
+from vlib.utils import echoized, uniqueId, validate_num_args
 
 DEBUG = 0
 VERBOSE = 0
@@ -20,14 +21,13 @@ SFTOKEN = 'SECURITY-TOKEN-HERE'
 WSDL_FILE = 'enterprise.wsdl.xml'
 
 COMMANDS = ('create', 'delete', 'desc', 'fields', 'query', 'show', 'update')
-SFOBJECTS = ('Account', 'Adoption', 'Book', 'CampaignMember', 'Contact', 
+SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
              'Lead', 'Opportunity', 'User')
-CUSTOMOBJECTS = ('Adoption', 'Book')
+CUSTOMOBJECTS = ('Adoption',)
 
 class SalesforceApiError(Exception): pass
 class SalesforceApiParameterError(SalesforceApiError): pass
 class SalesforceApiFieldLenMismatch(SalesforceApiError): pass
-class SalesforceMissingArguments(SalesforceApiError): pass
 
 class SalesforceApi(object):
     '''Preside over Salesforce API'''
@@ -48,32 +48,32 @@ class SalesforceApi(object):
             args = args[1:]
 
         # get command
-        command = self._validate('command', args[0])
+        command = self.validate('command', args[0])
         args = args[1:]
 
         # process command
         if command in ('desc', 'fields'):
-            _validate_num_args(command, 1, args)
-            sfobject = self._validate('sfobject', args[0])
+            validate_num_args(command, 1, args)
+            sfobject = self.validate('sfobject', args[0])
             if command == 'desc':
                 return self.desc(sfobject)
             else:
                 return self.fields(sfobject)
 
         elif command == 'query':
-            _validate_num_args(command, 1, args)
-            querystr = self._validate('querystr', args[0])
+            validate_num_args(command, 1, args)
+            querystr = self.validate('querystr', args[0])
             return self.query(querystr)
             
         elif command == 'show':
-            _validate_num_args(command, 1, args)
-            dobj = self._validate('directobject', args[0])
+            validate_num_args(command, 1, args)
+            dobj = self.validate('directobject', args[0])
             return self.showObjects()
 
         elif command in ('delete', 'create', 'update'):
-            _validate_num_args('update', 2, args)
-            sfobject = self._validate('sfobject', args[0])
-            csvfile  = self._validate('csvfile',  args[1])
+            validate_num_args('update', 2, args)
+            sfobject = self.validate('sfobject', args[0])
+            csvfile  = self.validate('csvfile',  args[1])
             header, rows = self.loadCsv(csvfile)
             if command == 'delete': 
                 return self.delete(sfobject, header, rows)
@@ -100,8 +100,21 @@ class SalesforceApi(object):
     @property
     def wsdl_file(self):
         '''Return full path to WSDL File'''
-        prog_base_dir = os.path.split(sys.argv[0])[0]
+        prog_base_dir = os.path.split(sys.argv[0])[0] or '.'
         return '%s/%s' % (prog_base_dir, WSDL_FILE)
+
+    def desc(self, sfobject):
+        '''Return Brief Column Description of sfobject'''
+        h = self.connection
+        try: 
+            result = h.describeSObject(sfobject)
+            results = []
+            for i, field in enumerate(result.fields):
+                results.append("%s. %s, %s, %s" 
+                               % (i+1, field.name, field.type, field.length))
+        except Exception, e:
+            results = str(e)
+        return results
 
     def showObjects(self):
         '''Return list of all Salesforce Objects'''
@@ -111,19 +124,6 @@ class SalesforceApi(object):
             results = []
             for i, sobject in enumerate(result.sobjects):
                 results.append("%s. %s" % (i, sobject.label))
-        except Exception, e:
-            results = str(e)
-        return results
-
-    def desc(self, sfobject, full=False):
-        '''Return Brief Column Description of sfobject'''
-        h = self.connection
-        try: 
-            result = h.describeSObject(sfobject)
-            results = []
-            for i, field in enumerate(result.fields):
-                results.append("%s. %s, %s, %s" 
-                               % (i+1, field.name, field.type, field.length))
         except Exception, e:
             results = str(e)
         return results
@@ -237,7 +237,7 @@ class SalesforceApi(object):
                     # Set value:
                     setattr(obj, field, value)
 
-                result = self._doAction(h, obj, action)
+                result = self.doAction(h, obj, action)
 
                 # process results:
                 if result.success:
@@ -261,7 +261,7 @@ class SalesforceApi(object):
             # write output files:
             failure_msg = '%6s failures ' % len(failures)
             if failures:
-                failure_file = 'failure_%s_%s.csv' % (sfobject, timestamp())
+                failure_file = 'failure_%s_%s.csv' % (sfobject, uniqueId())
                 writer = csv.writer(open(failure_file, 'w'))
                 writer.writerow(header + ['Failure'])
                 writer.writerows(failures)
@@ -269,7 +269,7 @@ class SalesforceApi(object):
 
             success_msg = '%6s successes' % len(successes)
             if successes:
-                success_file = 'success_%s_%s.csv' % (sfobject, timestamp())
+                success_file = 'success_%s_%s.csv' % (sfobject, uniqueId())
                 writer = csv.writer(open(success_file, 'w'))
                 writer.writerow(header + ['Status'])
                 writer.writerows(successes)
@@ -278,7 +278,7 @@ class SalesforceApi(object):
             results += [success_msg, failure_msg]
         return results
 
-    def _doAction(self, h, obj, action, try_count=0):
+    def doAction(self, h, obj, action, try_count=0):
         '''Provide Retry capability, to actual API call.'''
         TRIES = 3
         try_count += 1
@@ -296,7 +296,7 @@ class SalesforceApi(object):
             if 'INVALID_FIELD' in str(e) or 'INVALID_TYPE' in str(e):
                 raise
             if try_count <= TRIES:
-                return self._doAction(h, obj, action, try_count)
+                return self.doAction(h, obj, action, try_count)
 
 
     def loadCsv(self, csvfile):
@@ -334,7 +334,7 @@ class SalesforceApi(object):
         fp.close()
         return header, rows
     
-    def _validate(self, param, value):
+    def validate(self, param, value):
         emsg = ''
         if param == 'command':
             if value not in COMMANDS:
@@ -360,36 +360,6 @@ class SalesforceApi(object):
             raise SalesforceApiParameterError(emsg)
 
         return value
-
-def _validate_num_args(s, num_args, args):
-    '''Given: The description of a command; The number of arguments required; 
-              and A list of arguments
-       Behavior: Validate number of arguments. If Okay, do nothing.  Else,
-                 Create a clear error message and raise MissingArguments 
-                 Exception
-    '''
-    if len(args) < num_args:
-        pluralization = 's'
-        if num_args == 1: 
-            pluralization = ''
-        error_msg = '%s takes %s argument%s.' % (s, num_args, pluralization)
-
-        if not args:
-            error_msg += '  None given.'
-        else:
-            error_msg += '  Only %s given: %s' % (len(args), ", ".join(args))
-        raise SalesforceMissingArguments(error_msg)
-
-def timestamp(with_millisec=False):
-    '''Return: system timestamp as STRING of numbers.
-               eq: 20121215-101924
-       Options: with_milliseconds (default is with)
-    '''
-    d = str(datetime.now())
-    if with_millisec:
-        return d[0:4]+d[5:7]+d[8:10]+'-'+d[11:13]+d[14:16]+d[17:19]+'-'+d[20:]
-    else:
-        return d[0:4]+d[5:7]+d[8:10]+'-'+d[11:13]+d[14:16]+d[17:19]
 
 def past_tense_action_str(action):
     '''Given  STR 'create'
