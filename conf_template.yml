@@ -1,0 +1,6 @@
+salesforce:
+   user:      username-here
+   password:  password-here
+   token:     security-token-here
+   wsdl_file: enterprise.wsdl.xml
+
