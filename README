@@ -3,7 +3,7 @@ Command Line Interface, and General Purpose Library to Salesforce API.
 Requires: 
   - Salesforce python toolkit
   - github.com/dlink/vlib
-  - Download of account specific enterprise.wsdl.xml file form Salesforce
+  - Download of account specific enterprise.wsdl.xml file from Salesforce
   - Configuration file.  See conf_template.yml
 
 Command Line Usage:
