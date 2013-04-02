@@ -9,7 +9,7 @@ import copy
 from sforce.enterprise import SforceEnterpriseClient
 
 from vlib import conf
-from vlib.utils import echoized, uniqueId, validate_num_args
+from vlib.utils import echoized, pretty, uniqueId, validate_num_args
 
 DEBUG = 0
 VERBOSE = 0
@@ -386,21 +386,6 @@ def syntax(emsg=None):
     print
     sys.exit(1)
 
-def disp_results(results):
-    if isinstance(results, (list, tuple)):
-        if isinstance(results[0], (list, tuple)):
-            for row in results:
-                print ",".join(map(str, row)),
-                print
-        else:
-            print "\n".join(map(str, results))
-    elif isinstance(results, dict):
-        keys = sorted(results.keys())
-        for k in keys:
-            print "%s: %s" % (k, results[k])
-    else:
-        print results
-
 if __name__ == '__main__':
     sf = SalesforceApi()
     args = copy.copy(sys.argv[1:])
@@ -411,4 +396,4 @@ if __name__ == '__main__':
             raise
         results = str(e)
 
-    disp_results(results)
+    print pretty(results)
