@@ -8,17 +8,12 @@ import copy
 
 from sforce.enterprise import SforceEnterpriseClient
 
+from vlib import conf
 from vlib.utils import echoized, uniqueId, validate_num_args
 
 DEBUG = 0
 VERBOSE = 0
 IND_PROGRESS_INTERVAL = 50
-
-SFUSER  = 'USERNAME-HERE'
-SFPASS  = 'PASSWORD-HERE'
-SFTOKEN = 'SECURITY-TOKEN-HERE'
-
-WSDL_FILE = 'enterprise.wsdl.xml'
 
 COMMANDS = ('create', 'delete', 'desc', 'fields', 'query', 'show', 'update')
 SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
@@ -34,6 +29,7 @@ class SalesforceApi(object):
 
     def __init__(self):
         self.verbose = VERBOSE
+        self.conf = conf.Factory.create().data
 
     def process(self, *args):
         '''Read aguments and process API request
@@ -91,8 +87,12 @@ class SalesforceApi(object):
            Return: Handle to connection
         '''
         if '_connection' not in self.__dict__:
-            h = SforceEnterpriseClient(self.wsdl_file)
-            h.login(SFUSER, SFPASS, SFTOKEN)
+            user      = self.conf['salesforce']['user']
+            password  = self.conf['salesforce']['password']
+            token     = self.conf['salesforce']['token']
+            wsdl_file = self.conf['salesforce']['wsdl_file']
+            h = SforceEnterpriseClient(wsdl_file)
+            h.login(user, password, token)
 
             self._connection = h
         return self._connection
