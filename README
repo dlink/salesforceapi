@@ -4,6 +4,7 @@ Requires:
   - Salesforce python toolkit
   - github.com/dlink/vlib
   - Download of account specific enterprise.wsdl.xml file form Salesforce
+  - Configuration file.  See conf_template.yml
 
 Command Line Usage:
 
@@ -65,20 +66,3 @@ class SalesforceApi(__builtin__.object)
  |      Returns:  Message as an Array of 
  |                Number of successes and failures
  |                And the names of the output files.
- |  
- |  ----------------------------------------------------------------------
- |  Data descriptors defined here:
- |  
- |  __dict__
- |      dictionary for instance variables (if defined)
- |  
- |  __weakref__
- |      list of weak references to the object (if defined)
- |  
- |  connection
- |      Behavior: Log in to Salesforce
- |      Return: Handle to connection
- |  
- |  wsdl_file
- |      Return full path to WSDL File
-
