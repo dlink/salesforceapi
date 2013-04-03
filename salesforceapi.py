@@ -371,7 +371,6 @@ def parseArgs():
     q.add_argument('csvfile')
     
     args = p.parse_args()
-    print 'opts:', vars(args)
     return vars(args)
 
 if __name__ == '__main__':
