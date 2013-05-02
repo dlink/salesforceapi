@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 
 import sys
 import os
@@ -17,7 +17,7 @@ VERBOSE = 0
 IND_PROGRESS_INTERVAL = 50
 
 COMMANDS = ('create', 'delete', 'desc', 'fields', 'query', 'show', 'update')
-SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
+SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact',
              'Lead', 'Opportunity', 'User')
 
 class SalesforceApiError(Exception): pass
@@ -54,7 +54,7 @@ class SalesforceApi(object):
             return self.update(args.object, header, rows)
         else:
             return 'Unrecognized cmd:', cmd
-            
+
     @property
     def connection(self):
         '''Behavior: Log in to Salesforce
@@ -70,7 +70,7 @@ class SalesforceApi(object):
 
             self._connection = h
         return self._connection
-                
+
     @property
     def wsdl_file(self):
         '''Return full path to WSDL File'''
@@ -80,11 +80,11 @@ class SalesforceApi(object):
     def desc(self, sfobject):
         '''Return Brief Column Description of sfobject'''
         h = self.connection
-        try: 
+        try:
             result = h.describeSObject(sfobject)
             results = []
             for i, field in enumerate(result.fields):
-                results.append("%s. %s, %s, %s" 
+                results.append("%s. %s, %s, %s"
                                % (i+1, field.name, field.type, field.length))
         except Exception, e:
             results = str(e)
@@ -93,7 +93,7 @@ class SalesforceApi(object):
     def showObjects(self):
         '''Return list of all Salesforce Objects'''
         h = self.connection
-        try: 
+        try:
             result = h.describeGlobal()
             results = []
             for i, sobject in enumerate(result.sobjects):
@@ -105,7 +105,7 @@ class SalesforceApi(object):
     def fields(self, sfobject):
         '''Return Column Data of sfobject'''
         h = self.connection
-        try: 
+        try:
             result = h.describeSObject(sfobject)
             results = {}
             for i, field in enumerate(result.fields):
@@ -160,7 +160,7 @@ class SalesforceApi(object):
         return self.update(sfobject, header, rows, action='delete')
 
     def update(self, sfobject, header, rows, action='update'):
-        '''Given: sfobject as a STR, 
+        '''Given: sfobject as a STR,
                   header   as an ARRAY, and
                   rows     as an ARRAY of Arrays
 
@@ -170,7 +170,7 @@ class SalesforceApi(object):
                      Header names much match Salesforce Object field names.
                      First column must be the Id column.
 
-           Returns:  Message as an Array of 
+           Returns:  Message as an Array of
                      Number of successes and failures
                      And the names of the output files.
         '''
@@ -188,7 +188,7 @@ class SalesforceApi(object):
             fields = self.fields(sfobject)
             obj = h.generateObject(sfobject)
             # process rows:
-            
+
             rcnt = 0
             for row in rows:
                 rcnt += 1
@@ -205,7 +205,7 @@ class SalesforceApi(object):
                     # validate field:
                     if key not in fields.keys():
                         raise SalesforceApiError(
-                            "Invalid column '%s' for Salesforce object: %s" 
+                            "Invalid column '%s' for Salesforce object: %s"
                             % (field, sfobject))
 
                     # spec. handling by field types:
@@ -294,7 +294,7 @@ class SalesforceApi(object):
         for i, row in enumerate(csv.reader(fp,delimiter=',',escapechar='\\')):
             #row = unicode(row, 'replace')
             # Get Header
-            if i == 0:   
+            if i == 0:
                 header = row
                 continue
             num_fields = len(row)
@@ -315,7 +315,7 @@ class SalesforceApi(object):
 
         fp.close()
         return header, rows
-    
+
 def past_tense_action_str(action):
     '''Given  STR 'create'
        Return STR 'Created'
@@ -324,7 +324,7 @@ def past_tense_action_str(action):
     if action2 in ('create', 'delete', 'update'):
         return action2.title() + 'd'
     return action2.title() + 'ed'
-        
+
 def syntax():
     prog_name = os.path.basename(sys.argv[0])
     ws = ' '*len(prog_name)
@@ -349,7 +349,7 @@ def parseArgs():
     q = sp.add_parser('create', help='create new records in object')
     q.add_argument('object')
     q.add_argument('csvfile')
-    
+
     q = sp.add_parser('delete', help='Delete record from object')
     q.add_argument('object')
     q.add_argument('csvfile')
@@ -359,17 +359,17 @@ def parseArgs():
 
     q = sp.add_parser('fields', help='Return full description of object')
     q.add_argument('object')
-    
+
     q = sp.add_parser('query', help='Return results of a SOQL query string')
     q.add_argument('querystr')
-    
+
     q = sp.add_parser('show', help='Return list of all SF Objects')
     q.add_argument('what', choices=['objects'])
 
     q = sp.add_parser('update', help='Update records in SF Object')
     q.add_argument('object')
     q.add_argument('csvfile')
-    
+
     args = p.parse_args()
     return vars(args)
 
