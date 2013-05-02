@@ -144,7 +144,7 @@ class SalesforceApi(object):
             for record in result.records:
                 row = []
                 for key in header:
-                    row.append(getattr(record, key, ''))
+                    row.append(getattr(record, key, None))
                 results.append(row)
 
         except Exception, e:
