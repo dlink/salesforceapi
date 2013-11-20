@@ -182,7 +182,7 @@ class SalesforceApi(object):
                   header   as an ARRAY, and
                   rows     as an ARRAY of Arrays
 
-           Behavior: Update rows in Salesforce
+           Behavior: Update/Create/Delete rows in Salesforce
                      creates success and failure csv output files
 
                      Header names much match Salesforce Object field names.
