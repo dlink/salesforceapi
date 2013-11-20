@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 import sys
 import os
@@ -9,16 +9,16 @@ import copy
 from sforce.enterprise import SforceEnterpriseClient
 
 from vlib import conf
-from vlib.odict import odict
-from vlib.utils import echoized, pretty, uniqueId, validate_num_args
+from vlib.utils import echoized, uniqueId, validate_num_args
 
 DEBUG = 0
 VERBOSE = 0
 IND_PROGRESS_INTERVAL = 50
 
 COMMANDS = ('create', 'delete', 'desc', 'fields', 'query', 'show', 'update')
-SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact',
+SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
              'Lead', 'Opportunity', 'User')
+CUSTOMOBJECTS = ('Adoption',)
 
 class SalesforceApiError(Exception): pass
 class SalesforceApiParameterError(SalesforceApiError): pass
@@ -31,29 +31,55 @@ class SalesforceApi(object):
         self.verbose = VERBOSE
         self.conf = conf.Factory.create().data
 
-    def process(self, args):
-        args = odict(args)
-        cmd = args.cmd.lower()
+    def process(self, *args):
+        '''Read aguments and process API request
+           All requests come thru here
+        '''
+        if not args: 
+            syntax()
 
-        if cmd in ('create', 'delete', 'update'):
-            header, rows = self.loadCsv(args.csvfile)
+        # get verbose
+        if args[0] == '-v':
+            self.verbose = 1
+            args = args[1:]
 
-        if cmd == 'create':
-            return self.create(args.object, header, rows)
-        elif cmd == 'delete':
-            return self.create(args.object, header, rows)
-        elif cmd == 'desc':
-            return self.desc(args.object)
-        elif cmd == 'fields':
-            return self.fields(args.object)
-        elif cmd == 'query':
-            return self.query(args.querystr)
-        elif cmd == 'show':
+        # get command
+        command = self.validate('command', args[0])
+        args = args[1:]
+
+        # process command
+        if command in ('desc', 'fields'):
+            validate_num_args(command, 1, args)
+            sfobject = self.validate('sfobject', args[0])
+            if command == 'desc':
+                return self.desc(sfobject)
+            else:
+                return self.fields(sfobject)
+
+        elif command == 'query':
+            validate_num_args(command, 1, args)
+            querystr = self.validate('querystr', args[0])
+            return self.query(querystr)
+            
+        elif command == 'show':
+            validate_num_args(command, 1, args)
+            dobj = self.validate('directobject', args[0])
             return self.showObjects()
-        elif cmd == 'update':
-            return self.update(args.object, header, rows)
+
+        elif command in ('delete', 'create', 'update'):
+            validate_num_args('update', 2, args)
+            sfobject = self.validate('sfobject', args[0])
+            csvfile  = self.validate('csvfile',  args[1])
+            header, rows = self.loadCsv(csvfile)
+            if command == 'delete': 
+                return self.delete(sfobject, header, rows)
+            elif command == 'create':
+                return self.create(sfobject, header, rows)
+            else:
+                return self.update(sfobject, header, rows)
+
         else:
-            return 'Unrecognized cmd:', cmd
+            raise SalesforceApiError('Unrecognized command: %s' % command)
 
     @property
     def connection(self):
@@ -70,7 +96,7 @@ class SalesforceApi(object):
 
             self._connection = h
         return self._connection
-
+                
     @property
     def wsdl_file(self):
         '''Return full path to WSDL File'''
@@ -80,11 +106,11 @@ class SalesforceApi(object):
     def desc(self, sfobject):
         '''Return Brief Column Description of sfobject'''
         h = self.connection
-        try:
+        try: 
             result = h.describeSObject(sfobject)
             results = []
             for i, field in enumerate(result.fields):
-                results.append("%s. %s, %s, %s"
+                results.append("%s. %s, %s, %s" 
                                % (i+1, field.name, field.type, field.length))
         except Exception, e:
             results = str(e)
@@ -93,7 +119,7 @@ class SalesforceApi(object):
     def showObjects(self):
         '''Return list of all Salesforce Objects'''
         h = self.connection
-        try:
+        try: 
             result = h.describeGlobal()
             results = []
             for i, sobject in enumerate(result.sobjects):
@@ -105,7 +131,7 @@ class SalesforceApi(object):
     def fields(self, sfobject):
         '''Return Column Data of sfobject'''
         h = self.connection
-        try:
+        try: 
             result = h.describeSObject(sfobject)
             results = {}
             for i, field in enumerate(result.fields):
@@ -120,14 +146,6 @@ class SalesforceApi(object):
 
     def query(self, querystr):
         '''Return results of a querystr'''
-
-        # validate query a bit:
-        regex = 'select .* from .*'
-        if not re.match(regex, querystr):
-            emsg = 'Invalid query string: %s' % querystr
-            raise SalesforceApiParameterError(emsg)
-
-        # Do it
         h = self.connection
         try:
             results = []
@@ -144,7 +162,7 @@ class SalesforceApi(object):
             for record in result.records:
                 row = []
                 for key in header:
-                    row.append(getattr(record, key, None))
+                    row.append(getattr(record, key, ''))
                 results.append(row)
 
         except Exception, e:
@@ -160,7 +178,7 @@ class SalesforceApi(object):
         return self.update(sfobject, header, rows, action='delete')
 
     def update(self, sfobject, header, rows, action='update'):
-        '''Given: sfobject as a STR,
+        '''Given: sfobject as a STR, 
                   header   as an ARRAY, and
                   rows     as an ARRAY of Arrays
 
@@ -170,7 +188,7 @@ class SalesforceApi(object):
                      Header names much match Salesforce Object field names.
                      First column must be the Id column.
 
-           Returns:  Message as an Array of
+           Returns:  Message as an Array of 
                      Number of successes and failures
                      And the names of the output files.
         '''
@@ -188,7 +206,7 @@ class SalesforceApi(object):
             fields = self.fields(sfobject)
             obj = h.generateObject(sfobject)
             # process rows:
-
+            
             rcnt = 0
             for row in rows:
                 rcnt += 1
@@ -205,7 +223,7 @@ class SalesforceApi(object):
                     # validate field:
                     if key not in fields.keys():
                         raise SalesforceApiError(
-                            "Invalid column '%s' for Salesforce object: %s"
+                            "Invalid column '%s' for Salesforce object: %s" 
                             % (field, sfobject))
 
                     # spec. handling by field types:
@@ -294,7 +312,7 @@ class SalesforceApi(object):
         for i, row in enumerate(csv.reader(fp,delimiter=',',escapechar='\\')):
             #row = unicode(row, 'replace')
             # Get Header
-            if i == 0:
+            if i == 0:   
                 header = row
                 continue
             num_fields = len(row)
@@ -315,6 +333,33 @@ class SalesforceApi(object):
 
         fp.close()
         return header, rows
+    
+    def validate(self, param, value):
+        emsg = ''
+        if param == 'command':
+            if value not in COMMANDS:
+                emsg = 'Unrecognized command: %s' % value
+        elif param == 'directobject':
+            if value != 'objects':
+                emsg = 'Unrecognized directobject: %s' % value
+        elif param == 'querystr':
+            regex = 'select .* from .*'
+            if not re.match(regex, value):
+                emsg = 'Invalid query string: %s' % value
+        elif param == 'sfobject':
+            if value.lower() not in [x.lower() for x in SFOBJECTS]:
+                emsg = 'Unrecognized sfobject: %s' % value
+            if value.lower() in [x.lower() for x in CUSTOMOBJECTS]:
+                value += '__c'
+        elif param == 'csvfile':
+            if not os.path.isfile(value):
+                emsg = 'Unable to open file: %s' % value
+        else:
+            emsg = 'Unrecognized parameter: "%s" = "%s"' % (param, value)
+        if emsg:
+            raise SalesforceApiParameterError(emsg)
+
+        return value
 
 def past_tense_action_str(action):
     '''Given  STR 'create'
@@ -324,62 +369,46 @@ def past_tense_action_str(action):
     if action2 in ('create', 'delete', 'update'):
         return action2.title() + 'd'
     return action2.title() + 'ed'
-
-def syntax():
+        
+def syntax(emsg=None):
     prog_name = os.path.basename(sys.argv[0])
+    if emsg:
+        print emsg
     ws = ' '*len(prog_name)
-    o = ''
-    o += "\n"
-    o += "   %s [-v] create <object> <csvfile>\n" % prog_name
-    o += "   %s      delete <object> <csvfile>\n" % ws
-    o += "   %s      desc   <object>\n"           % ws
-    o += "   %s      fields <object>\n"           % ws
-    o += "   %s      query  <querystr>\n"      % ws
-    o += "   %s      show   objects\n"            % ws
-    o += "   %s      update <object> <csvfile>\n" % ws
-    return o
+    print
+    print "   %s [-v] create <object> <csvfile>" % prog_name
+    print "   %s      delete <object> <csvfile>" % ws
+    print "   %s      desc <object>"             % ws
+    print "   %s      fields <object>"           % ws
+    print "   %s      query <querystring>"       % ws
+    print "   %s      show objects"              % ws
+    print "   %s      update <object> <csvfile>" % ws
+    print
+    sys.exit(1)
 
-def parseArgs():
-    import argparse
-    p = argparse.ArgumentParser(description="Salesforce API", usage=syntax())
-    p.add_argument('-v', dest='verbose', action='store_true',
-                   help='verbose')
-    sp = p.add_subparsers(dest='cmd')
-
-    q = sp.add_parser('create', help='create new records in object')
-    q.add_argument('object')
-    q.add_argument('csvfile')
-
-    q = sp.add_parser('delete', help='Delete record from object')
-    q.add_argument('object')
-    q.add_argument('csvfile')
-
-    q = sp.add_parser('desc', help='Return brief description of object')
-    q.add_argument('object')
-
-    q = sp.add_parser('fields', help='Return full description of object')
-    q.add_argument('object')
-
-    q = sp.add_parser('query', help='Return results of a SOQL query string')
-    q.add_argument('querystr')
-
-    q = sp.add_parser('show', help='Return list of all SF Objects')
-    q.add_argument('what', choices=['objects'])
-
-    q = sp.add_parser('update', help='Update records in SF Object')
-    q.add_argument('object')
-    q.add_argument('csvfile')
-
-    args = p.parse_args()
-    return vars(args)
+def disp_results(results):
+    if isinstance(results, (list, tuple)):
+        if isinstance(results[0], (list, tuple)):
+            for row in results:
+                print ",".join(map(str, row)),
+                print
+        else:
+            print "\n".join(map(str, results))
+    elif isinstance(results, dict):
+        keys = sorted(results.keys())
+        for k in keys:
+            print "%s: %s" % (k, results[k])
+    else:
+        print results
 
 if __name__ == '__main__':
-    args = parseArgs()
-    VERBOSE = args['verbose']
-
+    sf = SalesforceApi()
+    args = copy.copy(sys.argv[1:])
     try:
-        print pretty(SalesforceApi().process(args))
+        results = sf.process(*args)
     except Exception, e:
-        if VERBOSE:
+        if DEBUG:
             raise
-        print "%s:%s" % (e.__class__.__name__, e)
+        results = str(e)
+
+    disp_results(results)
