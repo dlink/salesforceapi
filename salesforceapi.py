@@ -118,8 +118,11 @@ class SalesforceApi(object):
             results = str(e)
         return results
 
-    def query(self, querystr):
-        '''Return results of a querystr'''
+    def query(self, querystr, format='tablular'):
+        '''Return results of a querystr
+           options: format='tablular'
+                    format='dict|dictionary'
+        '''
 
         # validate query a bit:
         regex = 'select .* from .*'
@@ -127,11 +130,17 @@ class SalesforceApi(object):
             emsg = 'Invalid query string: %s' % querystr
             raise SalesforceApiParameterError(emsg)
 
+        if format not in ('tabular', 'dict', 'dictionarly'):
+            raise Exception('SalesforceApi.Query: Unrecognized format: %s'
+                            % format)
+
         # Do it
         h = self.connection
         try:
             results = []
             result =  h.query(querystr)
+            if not result.size:
+                return results
 
             # build header. some recs do not have all fields:
             header = []
@@ -140,12 +149,19 @@ class SalesforceApi(object):
                     header = record.__keylist__
 
             # build output
-            results.append(header)
-            for record in result.records:
-                row = []
-                for key in header:
-                    row.append(getattr(record, key, None))
-                results.append(row)
+            if format in ('dict', 'dictionary'):
+                for record in result.records:
+                    row = {}
+                    for key in header:
+                        row[key] = getattr(record, key, None)
+                    results.append(row)
+            else:
+                results.append(header)
+                for record in result.records:
+                    row = []
+                    for key in header:
+                        row.append(getattr(record, key, None))
+                    results.append(row)
 
         except Exception, e:
             results = str(e)
