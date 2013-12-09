@@ -144,7 +144,7 @@ class SalesforceApi(object):
             results = str(e)
         return results
 
-    def query(self, querystr, format='tablular'):
+    def query(self, querystr, format='tabular'):
         '''Return results of a querystr
            options: format='tablular'
                     format='dict|dictionary'
