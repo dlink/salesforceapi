@@ -31,6 +31,10 @@ class SalesforceApi(object):
         self.verbose = VERBOSE
         self.conf = conf.Factory.create().data
 
+        # query spec. instance vars:
+        self.query_done = None
+        self.query_locator = None
+
     def process(self, *args):
         '''Read aguments and process API request
            All requests come thru here
@@ -146,6 +150,8 @@ class SalesforceApi(object):
 
     def query(self, querystr, format='tabular'):
         '''Return results of a querystr
+           see: queryMore()
+
            options: format='tablular'
                     format='dict|dictionary'
         '''
@@ -156,15 +162,34 @@ class SalesforceApi(object):
             emsg = 'Invalid query string: %s' % querystr
             raise SalesforceApiParameterError(emsg)
 
+        h = self.connection
+
+        # set batch size
+        queryOptions = h.generateHeader('QueryOptions')
+        queryOptions.batchSize = 2000
+        h.setQueryOptions(queryOptions)
+
+        # get data
+        result =  h.query(querystr)
+        return self.queryResults(result, format)
+
+    def queryMore(self, format='tabular'):
+        '''Return subsequent results from querystr set up in query()
+           see: query()
+        '''
+        h = self.connection
+        result = h.queryMore(self.query_locator)
+        return self.queryResults(result, format)
+    
+    def queryResults(self, result, format):
+        '''Query results processing for query() and queryMore()'''
+
+        results = []
         if format not in ('tabular', 'dict', 'dictionary'):
             raise Exception('SalesforceApi.Query: Unrecognized format: %s'
                             % format)
-
-        # Do it
-        h = self.connection
-
-        results = []
-        result =  h.query(querystr)
+        self.query_done    = result.done
+        self.query_locator = result.queryLocator
         if not result.size:
             return results
 
