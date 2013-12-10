@@ -162,37 +162,35 @@ class SalesforceApi(object):
 
         # Do it
         h = self.connection
-        try:
-            results = []
-            result =  h.query(querystr)
-            if not result.size:
-                return results
 
-            # build header. some recs do not have all fields:
-            header = []
+        results = []
+        result =  h.query(querystr)
+        if not result.size:
+            return results
+
+        # build header. some recs do not have all fields:
+        header = []
+        for record in result.records:
+            if len(record.__keylist__) > len(header):
+                header = record.__keylist__
+
+        # build output
+        if format in ('dict', 'dictionary'):
             for record in result.records:
-                if len(record.__keylist__) > len(header):
-                    header = record.__keylist__
+                row = {}
+                for key, value in record:
+                    row[key] = value
+                results.append(row)
+        else:
+            # Note: assumption about header is wrong
+            # header of first row not the same as for others
+            results.append(header)
+            for record in result.records:
+                row = []
+                for key in header:
+                    row.append(getattr(record, key, None))
+                results.append(row)
 
-            # build output
-            if format in ('dict', 'dictionary'):
-                for record in result.records:
-                    row = {}
-                    for key, value in record:
-                        row[key] = value
-                    results.append(row)
-            else:
-                # Note: assumption about header is wrong
-                # header of first row not the same as for others
-                results.append(header)
-                for record in result.records:
-                    row = []
-                    for key in header:
-                        row.append(getattr(record, key, None))
-                    results.append(row)
-
-        except Exception, e:
-            results = str(e)
         return results
 
     def create(self, sfobject, header, rows):
