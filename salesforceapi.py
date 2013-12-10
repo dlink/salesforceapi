@@ -156,7 +156,7 @@ class SalesforceApi(object):
             emsg = 'Invalid query string: %s' % querystr
             raise SalesforceApiParameterError(emsg)
 
-        if format not in ('tabular', 'dict', 'dictionarly'):
+        if format not in ('tabular', 'dict', 'dictionary'):
             raise Exception('SalesforceApi.Query: Unrecognized format: %s'
                             % format)
 
@@ -178,10 +178,12 @@ class SalesforceApi(object):
             if format in ('dict', 'dictionary'):
                 for record in result.records:
                     row = {}
-                    for key in header:
-                        row[key] = getattr(record, key, None)
+                    for key, value in record:
+                        row[key] = value
                     results.append(row)
             else:
+                # Note: assumption about header is wrong
+                # header of first row not the same as for others
                 results.append(header)
                 for record in result.records:
                     row = []
