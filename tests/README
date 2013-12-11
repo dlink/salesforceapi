@@ -1,0 +1,24 @@
+How to run tests
+
+I CREATE CONFIG FROM TEMPLATE
+
+   cd tests
+   cp testconf_template.yml testconf.yml
+
+II SET ENVIRONMENT
+
+   Assuming these directory locations:
+     $HOME/vlib
+     $HOME/salesforceapi
+
+   Run:
+      source set_env.sh
+
+      It does the following:
+
+         export VCONF=$HOME/salesforceapi/tests/testconf.yml
+         export PYTHONPATH=$HOME/vlib/vlib:$HOME/salesforceapi
+
+III. Run test
+
+   $ ./test_salesforceapi.py All   # With no args for help
