@@ -7,9 +7,13 @@ I CREATE CONFIG FROM TEMPLATE
 
 II SET ENVIRONMENT
 
-   Assuming these directory locations:
-     $HOME/vlib
-     $HOME/salesforceapi
+   Clone repositories:
+      git clone https://github.com/dlink/vlib /path/to/vlib
+      git clone https://github.com/dlink/salesforceapi /path/to/salesforceapi
+
+   If not cloned to $HOME, make links:
+      ln -s /path/to/vlib $HOME/vlib
+      ln -s /path/to/salesforceapi $HOME/salesforceapi
 
    Run:
       source set_env.sh
@@ -17,7 +21,7 @@ II SET ENVIRONMENT
       It does the following:
 
          export VCONF=$HOME/salesforceapi/tests/testconf.yml
-         export PYTHONPATH=$HOME/vlib/vlib:$HOME/salesforceapi
+         export PYTHONPATH=$HOME/vlib:$HOME/salesforceapi
 
 III. Run test
 
