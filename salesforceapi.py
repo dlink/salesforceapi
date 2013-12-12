@@ -6,7 +6,11 @@ import re
 import csv
 import copy
 
-from sforce.enterprise import SforceEnterpriseClient
+CLIENT_LIB = 'toolkit'
+if CLIENT_LIB == 'toolkit':
+    from client_lib_toolkit import ClientLib
+elsif CLIENT_LIB == 'simple':
+    from client_lib_simple import ClientLib
 
 from vlib import conf
 from vlib.utils import echoized, uniqueId, validate_num_args
@@ -14,6 +18,7 @@ from vlib.utils import echoized, uniqueId, validate_num_args
 DEBUG = 0
 VERBOSE = 0
 IND_PROGRESS_INTERVAL = 50
+
 
 COMMANDS = ('create', 'delete', 'desc', 'fields', 'query', 'show', 'update')
 SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
@@ -30,7 +35,7 @@ class SalesforceApi(object):
     def __init__(self):
         self.verbose = VERBOSE
         self.conf = conf.Factory.create().data
-
+        
         # query spec. instance vars:
         self.query_done = None
         self.query_locator = None
@@ -90,16 +95,7 @@ class SalesforceApi(object):
         '''Behavior: Log in to Salesforce
            Return: Handle to connection
         '''
-        if '_connection' not in self.__dict__:
-            user      = self.conf['salesforce']['user']
-            password  = self.conf['salesforce']['password']
-            token     = self.conf['salesforce']['token']
-            wsdl_file = self.conf['salesforce']['wsdl_file']
-            h = SforceEnterpriseClient(wsdl_file)
-            h.login(user, password, token)
-
-            self._connection = h
-        return self._connection
+        return self.clientLib.connection
                 
     @property
     def wsdl_file(self):
