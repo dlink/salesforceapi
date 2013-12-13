@@ -7,6 +7,9 @@ from vlib import conf
 
 class ClientLib(object):
 
+    NAME = 'toolkit'
+    RECORD_KEYS_TO_IGNORE = []
+
     def __init__(self):
         self.conf = conf.Factory.create().data
 
@@ -26,3 +29,30 @@ class ClientLib(object):
             self._connection = h
         return self._connection
                 
+    def setBatchSize(self):
+        h = self.connection
+        queryOptions = h.generateHeader('QueryOptions')
+        queryOptions.batchSize = 2000
+        h.setQueryOptions(queryOptions)
+
+    def query(self, querystr):
+        return self.connection.query(querystr)
+
+    def queryIsDone(self, result):
+        return result.done
+
+    def queryLocator(self, result):
+        return result.queryLocator
+
+    def resultSize(self, result):
+        return result.size
+
+    def resultRecords(self, result):
+        return result.records
+
+    def getResultHeader(self, result):
+        header = []
+        for record in result.records:
+            if len(record.__keylist__) > len(header):
+                header = record.__keylist__
+        return header

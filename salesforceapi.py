@@ -6,11 +6,8 @@ import re
 import csv
 import copy
 
-CLIENT_LIB = 'toolkit'
-if CLIENT_LIB == 'toolkit':
-    from client_lib_toolkit import ClientLib
-elif CLIENT_LIB == 'simple':
-    from client_lib_simple import ClientLib
+#CLIENT_LIB = 'toolkit'
+CLIENT_LIB = 'simple'
 
 from vlib.utils import echoized, uniqueId, validate_num_args
 
@@ -31,12 +28,19 @@ class SalesforceApiFieldLenMismatch(SalesforceApiError): pass
 class SalesforceApi(object):
     '''Preside over Salesforce API'''
 
-    def __init__(self):
+    def __init__(self, client_lib=CLIENT_LIB):
         self.verbose = VERBOSE
-        self.clientLib = ClientLib()
-        # query spec. instance vars:
+        self.clientLib = self._getClientLib(client_lib)
+
         self.query_done = None
         self.query_locator = None
+
+    def _getClientLib(self, client_lib):
+        if client_lib == 'toolkit':
+            from client_lib_toolkit import ClientLib
+        elif client_lib == 'simple':
+            from client_lib_simple import ClientLib
+        return ClientLib()
 
     def process(self, *args):
         '''Read aguments and process API request
@@ -159,12 +163,10 @@ class SalesforceApi(object):
         h = self.connection
 
         # set batch size
-        queryOptions = h.generateHeader('QueryOptions')
-        queryOptions.batchSize = 2000
-        h.setQueryOptions(queryOptions)
+        self.clientLib.setBatchSize()
 
         # get data
-        result =  h.query(querystr)
+        result =  self.clientLib.query(querystr)
         return self.queryResults(result, format)
 
     def queryMore(self, format='tabular'):
@@ -182,29 +184,31 @@ class SalesforceApi(object):
         if format not in ('tabular', 'dict', 'dictionary'):
             raise Exception('SalesforceApi.Query: Unrecognized format: %s'
                             % format)
-        self.query_done    = result.done
-        self.query_locator = result.queryLocator
-        if not result.size:
+        self.query_done  = self.clientLib.queryIsDone(result)
+        self.query_locator = self.clientLib.queryLocator(result)
+
+        if not self.clientLib.resultSize(result):
             return results
 
-        # build header. some recs do not have all fields:
-        header = []
-        for record in result.records:
-            if len(record.__keylist__) > len(header):
-                header = record.__keylist__
+        records = self.clientLib.resultRecords(result)
 
         # build output
         if format in ('dict', 'dictionary'):
-            for record in result.records:
+            for record in records:
                 row = {}
-                for key, value in record:
+                for key, value in \
+                    record if self.clientLib.NAME == 'toolkit' else \
+                    record.items():
+                    if key == self.clientLib.RECORD_KEYS_TO_IGNORE:
+                        continue
                     row[key] = value
                 results.append(row)
         else:
             # Note: assumption about header is wrong
             # header of first row not the same as for others
+            header = self.clientLib.getResultHeader(result)
             results.append(header)
-            for record in result.records:
+            for record in records:
                 row = []
                 for key in header:
                     row.append(getattr(record, key, None))
