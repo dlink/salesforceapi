@@ -3,7 +3,12 @@
 
 from sforce.enterprise import SforceEnterpriseClient
 
-class ClientLib(object)
+from vlib import conf
+
+class ClientLib(object):
+
+    def __init__(self):
+        self.conf = conf.Factory.create().data
 
     @property
     def connection(self):

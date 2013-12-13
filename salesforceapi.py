@@ -9,10 +9,9 @@ import copy
 CLIENT_LIB = 'toolkit'
 if CLIENT_LIB == 'toolkit':
     from client_lib_toolkit import ClientLib
-elsif CLIENT_LIB == 'simple':
+elif CLIENT_LIB == 'simple':
     from client_lib_simple import ClientLib
 
-from vlib import conf
 from vlib.utils import echoized, uniqueId, validate_num_args
 
 DEBUG = 0
@@ -34,8 +33,7 @@ class SalesforceApi(object):
 
     def __init__(self):
         self.verbose = VERBOSE
-        self.conf = conf.Factory.create().data
-        
+        self.clientLib = ClientLib()
         # query spec. instance vars:
         self.query_done = None
         self.query_locator = None
