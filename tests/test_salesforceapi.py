@@ -17,9 +17,8 @@ class TestSalesforceApi(unittest.TestCase):
     '''Test Conf'''
     
     def setUp(self):
-        global client_lib
         from salesforceapi import SalesforceApi
-        self.sf = SalesforceApi(client_lib)
+        self.sf = SalesforceApi()
 
     def test_fields(self):
         results = self.sf.fields('contact')
@@ -85,15 +84,6 @@ if __name__ == '__main__':
     suite = unittest.TestSuite()
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
     suite.addTests([loader(t) for t in tests])
-
-    # test toolkit client_lib
-    #print 'test toolkit client_lib'
-    #client_lib = 'toolkit'
-    #unittest.TextTestRunner(verbosity=2).run(suite)
-
-    # test simple client lib
-    #print 'test simple client_lib'
-    client_lib = 'simple'
     unittest.TextTestRunner(verbosity=2).run(suite)
 
 

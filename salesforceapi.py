@@ -6,20 +6,21 @@ import re
 import csv
 import copy
 
-#CLIENT_LIB = 'toolkit'
-CLIENT_LIB = 'simple'
+from simple_salesforce import Salesforce
 
+from vlib import conf
 from vlib.utils import echoized, uniqueId, validate_num_args
 
 DEBUG = 0
 VERBOSE = 0
 IND_PROGRESS_INTERVAL = 50
 
-
 COMMANDS = ('create', 'delete', 'desc', 'fields', 'query', 'show', 'update')
 SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
-             'Lead', 'Opportunity', 'User')
+             'Lead', 'Opportunity', 'User', 'Task')
 CUSTOMOBJECTS = ('Adoption',)
+
+RECORD_KEYS_TO_IGNORE = ['attributes']
 
 class SalesforceApiError(Exception): pass
 class SalesforceApiParameterError(SalesforceApiError): pass
@@ -28,19 +29,11 @@ class SalesforceApiFieldLenMismatch(SalesforceApiError): pass
 class SalesforceApi(object):
     '''Preside over Salesforce API'''
 
-    def __init__(self, client_lib=CLIENT_LIB):
+    def __init__(self):
         self.verbose = VERBOSE
-        self.clientLib = self._getClientLib(client_lib)
-
+        self.conf = conf.Factory.create().data
         self.query_done = None
         self.query_locator = None
-
-    def _getClientLib(self, client_lib):
-        if client_lib == 'toolkit':
-            from client_lib_toolkit import ClientLib
-        elif client_lib == 'simple':
-            from client_lib_simple import ClientLib
-        return ClientLib()
 
     def process(self, *args):
         '''Read aguments and process API request
@@ -97,18 +90,26 @@ class SalesforceApi(object):
         '''Behavior: Log in to Salesforce
            Return: Handle to connection
         '''
-        return self.clientLib.connection
-                
-    @property
-    def wsdl_file(self):
-        '''Return full path to WSDL File'''
-        prog_base_dir = os.path.split(sys.argv[0])[0] or '.'
-        return '%s/%s' % (prog_base_dir, WSDL_FILE)
+        if '_connection' not in self.__dict__:
+            user      = self.conf['salesforce']['user']
+            password  = self.conf['salesforce']['password']
+            token     = self.conf['salesforce']['token']
+            self._connection = Salesforce(username=user,
+                                          password=password,
+                                          security_token=token)
+        return self._connection
+
+    #@property
+    #def wsdl_file(self):
+    #    '''Return full path to WSDL File'''
+    #    prog_base_dir = os.path.split(sys.argv[0])[0] or '.'
+    #    return '%s/%s' % (prog_base_dir, WSDL_FILE)
 
     def desc(self, sfobject):
         '''Return Brief Column Description of sfobject'''
 
-        result = self.clientLib.desc(sfobject)
+        sf = self.connection
+        result = sf.__getattr__(sfobject).describe()
         results = []
         i = 0
         for i, field in enumerate(result['fields']):
@@ -119,10 +120,9 @@ class SalesforceApi(object):
 
     def showObjects(self):
         '''Return list of all Salesforce Objects'''
-        h = self.connection
+        sf = self.connection
         try: 
-            #result = h.describeGlobal()
-            result = self.clientLib.connection.describe()
+            result = sf.describe()
             results = []
             for i, sobject in enumerate(result['sobjects']):
                 results.append("%s. %s" % (i, sobject['label']))
@@ -132,7 +132,9 @@ class SalesforceApi(object):
 
     def fields(self, sfobject):
         '''Return Column Data of sfobject'''
-        result = self.clientLib.desc(sfobject)
+
+        sf = self.connection
+        result = sf.__getattr__(sfobject).describe()
         results = {}
         for i, field in enumerate(result['fields']):
             key = field['name'].lower()
@@ -149,6 +151,7 @@ class SalesforceApi(object):
            options: format='tablular'
                     format='dict|dictionary'
         '''
+        sf = self.connection
 
         # validate query a bit:
         regex = 'select .* from .*'
@@ -156,21 +159,18 @@ class SalesforceApi(object):
             emsg = 'Invalid query string: %s' % querystr
             raise SalesforceApiParameterError(emsg)
 
-        h = self.connection
-
-        # set batch size
-        self.clientLib.setBatchSize()
+        #sf.setBatchSize()
 
         # get data
-        result =  self.clientLib.query(querystr)
+        result =  sf.query_all(querystr)
         return self.queryResults(result, format)
 
     def queryMore(self, format='tabular'):
         '''Return subsequent results from querystr set up in query()
            see: query()
         '''
-        h = self.connection
-        result = h.queryMore(self.query_locator)
+        sf = self.connection
+        result = sf.queryMore(self.query_locator)
         return self.queryResults(result, format)
     
     def queryResults(self, result, format):
@@ -180,29 +180,28 @@ class SalesforceApi(object):
         if format not in ('tabular', 'dict', 'dictionary'):
             raise Exception('SalesforceApi.Query: Unrecognized format: %s'
                             % format)
-        self.query_done  = self.clientLib.queryIsDone(result)
-        self.query_locator = self.clientLib.queryLocator(result)
 
-        if not self.clientLib.resultSize(result):
+        self.query_done  = result['done']
+        self.query_locator = None # not yet encountered a batch not big enough
+
+        if not result['totalSize']:
             return results
 
-        records = self.clientLib.resultRecords(result)
+        records = result['records']
 
         # build output
         if format in ('dict', 'dictionary'):
             for record in records:
                 row = {}
-                for key, value in \
-                    record if self.clientLib.NAME == 'toolkit' else \
-                    record.items():
-                    if key in self.clientLib.RECORD_KEYS_TO_IGNORE:
+                for key, value in record.items():
+                    if key in RECORD_KEYS_TO_IGNORE:
                         continue
                     row[key] = value
                 results.append(row)
         else:
             # Note: assumption about header is wrong
             # header of first row not the same as for others
-            header = self.clientLib.getResultHeader(result)
+            header = result['records'][0].keys()
             results.append(header)
             for record in records:
                 row = []
@@ -245,6 +244,8 @@ class SalesforceApi(object):
         failures = []
         successes = []
 
+        sf     = self.connection
+        obj    = sf.__getattr__(sfobject.title())
         fields = self.fields(sfobject)
 
         # process rows:
@@ -280,7 +281,6 @@ class SalesforceApi(object):
                 # Set value:
                 data[field] = value
 
-            obj = self.connection.__getattr__(sfobject.title())
             if action == 'delete':
                 result = obj.delete(object_id)
             elif action == 'create':
@@ -447,10 +447,13 @@ def disp_results(results):
 if __name__ == '__main__':
     sf = SalesforceApi()
     args = copy.copy(sys.argv[1:])
+    if args[0] == '-v':
+        VERBOSE = True
+    
     try:
         results = sf.process(*args)
     except Exception, e:
-        if DEBUG:
+        if DEBUG or VERBOSE:
             raise
         results = str(e)
 
