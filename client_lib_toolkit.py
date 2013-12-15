@@ -29,6 +29,9 @@ class ClientLib(object):
             self._connection = h
         return self._connection
                 
+    def desc(self, sfobject):
+        return self.connection.describeSObject(sfobject)
+
     def setBatchSize(self):
         h = self.connection
         queryOptions = h.generateHeader('QueryOptions')

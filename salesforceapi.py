@@ -107,43 +107,39 @@ class SalesforceApi(object):
 
     def desc(self, sfobject):
         '''Return Brief Column Description of sfobject'''
-        h = self.connection
-        try: 
-            result = h.describeSObject(sfobject)
-            results = []
-            for i, field in enumerate(result.fields):
-                results.append("%s. %s, %s, %s" 
-                               % (i+1, field.name, field.type, field.length))
-        except Exception, e:
-            results = str(e)
+
+        result = self.clientLib.desc(sfobject)
+        results = []
+        i = 0
+        for i, field in enumerate(result['fields']):
+            results.append("%s. %s, %s, %s"  % (i+1, field['name'], 
+                                                field['type'], 
+                                                field['length']))
         return results
 
     def showObjects(self):
         '''Return list of all Salesforce Objects'''
         h = self.connection
         try: 
-            result = h.describeGlobal()
+            #result = h.describeGlobal()
+            result = self.clientLib.connection.describe()
             results = []
-            for i, sobject in enumerate(result.sobjects):
-                results.append("%s. %s" % (i, sobject.label))
+            for i, sobject in enumerate(result['sobjects']):
+                results.append("%s. %s" % (i, sobject['label']))
         except Exception, e:
             results = str(e)
         return results
 
     def fields(self, sfobject):
         '''Return Column Data of sfobject'''
-        h = self.connection
-        try: 
-            result = h.describeSObject(sfobject)
-            results = {}
-            for i, field in enumerate(result.fields):
-                key = field.name.lower()
-                results[key] = {'type': field.type,
-                                'length': field.length,
-                                'name': field.name,
-                                'position': i+1}
-        except Exception, e:
-            results = str(e)
+        result = self.clientLib.desc(sfobject)
+        results = {}
+        for i, field in enumerate(result['fields']):
+            key = field['name'].lower()
+            results[key] = {'type': field['type'],
+                            'length': field['length'],
+                            'name': field['name'],
+                            'position': i+1}
         return results
 
     def query(self, querystr, format='tabular'):
@@ -245,86 +241,86 @@ class SalesforceApi(object):
         if action in ('delete', 'update') and header[0].title() != 'Id':
             raise SalesforceApiError('First column must be Id')
 
-        h = self.connection
         results = []
         failures = []
         successes = []
-        try:
-            fields = self.fields(sfobject)
-            obj = h.generateObject(sfobject)
-            # process rows:
-            
-            rcnt = 0
-            for row in rows:
-                rcnt += 1
-                if self.verbose:
-                    print '%s. row: %s' % (rcnt, row)
 
-                for i, value in enumerate(row):
-                    if i == 0 and action in ('delete', 'update'):
-                        obj.Id = value
+        fields = self.fields(sfobject)
+
+        # process rows:
+        rcnt = 0
+        data = {}
+        for row in rows:
+            rcnt += 1
+            if self.verbose:
+                print '%s. row: %s' % (rcnt, row)
+
+            for i, value in enumerate(row):
+                if i == 0 and action in ('delete', 'update'):
+                    #obj.Id = value
+                    object_id = value
+                    continue
+                field = header[i]
+                key = field.lower()
+
+                # validate field:
+                if key not in fields.keys():
+                    raise SalesforceApiError(
+                        "Invalid column '%s' for Salesforce object: %s"
+                        % (field, sfobject))
+
+                # spec. handling by field types:
+                if fields[key]['type'] in ('date','double'):
+                    if not value:
                         continue
-                    field = header[i]
-                    key = field.lower()
+                elif fields[key]['type'] in ('string'):
+                    if value:
+                        value = unicode(value, errors='ignore')
 
-                    # validate field:
-                    if key not in fields.keys():
-                        raise SalesforceApiError(
-                            "Invalid column '%s' for Salesforce object: %s" 
-                            % (field, sfobject))
+                # Set value:
+                data[field] = value
 
-                    # spec. handling by field types:
-                    if fields[key]['type'] in ('date','double'):
-                        if not value:
-                            continue
-                    elif fields[key]['type'] in ('string'):
-                        if value:
-                            value = unicode(value, errors='ignore')
+            obj = self.connection.__getattr__(sfobject.title())
+            if action == 'delete':
+                result = obj.delete(object_id)
+            elif action == 'create':
+                result = obj.create(data)
+            else:
+                result = obj.update(object_id, data)
 
-                    # Set value:
-                    setattr(obj, field, value)
+            SUCCESS_CODES = [204,]
+            if (isinstance(result, int) and result in SUCCESS_CODES) \
+               or result['success']:
+                successes.append(row + [past_tense_action_str(action)])
+            else:
+                emsg = '. '.join([e.message for e in result.errors])
+                failures.append(row + [emsg])
 
-                result = self.doAction(h, obj, action)
+            if rcnt and rcnt % IND_PROGRESS_INTERVAL == 0:
+                print '%s rows processed. (%s successes, %s failures)' \
+                    % (rcnt, len(successes), len(failures))
 
-                # process results:
-                if result.success:
-                    successes.append(row + [past_tense_action_str(action)])
-                else:
-                    emsg = '. '.join([e.message for e in result.errors])
-                    failures.append(row + [emsg])
+        # write output files:
+        failure_msg = '%6s failures ' % len(failures)
+        if failures:
+            failure_file = 'failure_%s_%s.csv' % (sfobject, uniqueId())
+            writer = csv.writer(open(failure_file, 'w'))
+            writer.writerow(header + ['Failure'])
+            writer.writerows(failures)
+            failure_msg += ' (%s)' % failure_file
 
-                if rcnt and rcnt % IND_PROGRESS_INTERVAL == 0:
-                    print '%s rows processed. (%s successes, %s failures)' \
-                        % (rcnt, len(successes), len(failures))
+        success_msg = '%6s successes' % len(successes)
+        if successes:
+            success_file = 'success_%s_%s.csv' % (sfobject, uniqueId())
+            writer = csv.writer(open(success_file, 'w'))
+            writer.writerow(header + ['Status'])
+            writer.writerows(successes)
+            success_msg += ' (%s)' % success_file
 
-        except Exception, e:
-            if DEBUG:
-                raise
-            # removing this recovery:
-            #results = ['%s: %s' % (e.__class__.__name__, e)]
-            raise
-
-        finally:
-            # write output files:
-            failure_msg = '%6s failures ' % len(failures)
-            if failures:
-                failure_file = 'failure_%s_%s.csv' % (sfobject, uniqueId())
-                writer = csv.writer(open(failure_file, 'w'))
-                writer.writerow(header + ['Failure'])
-                writer.writerows(failures)
-                failure_msg += ' (%s)' % failure_file
-
-            success_msg = '%6s successes' % len(successes)
-            if successes:
-                success_file = 'success_%s_%s.csv' % (sfobject, uniqueId())
-                writer = csv.writer(open(success_file, 'w'))
-                writer.writerow(header + ['Status'])
-                writer.writerows(successes)
-                success_msg += ' (%s)' % success_file
-
-            results += [success_msg, failure_msg]
+        results += [success_msg, failure_msg]
         return results
 
+    """
     def doAction(self, h, obj, action, try_count=0):
         '''Provide Retry capability, to actual API call.'''
         TRIES = 3
@@ -344,7 +340,7 @@ class SalesforceApi(object):
                 raise
             if try_count <= TRIES:
                 return self.doAction(h, obj, action, try_count)
-
+    """
 
     def loadCsv(self, csvfile):
         '''Given a csv filename

@@ -30,6 +30,9 @@ class ClientLib(object):
 
         return self._connection
 
+    def desc(self, sfobject):
+        return self.connection.__getattr__(sfobject).describe()
+
     def setBatchSize(self):
         pass # apparently not necessary with simple_salesforce
 
