@@ -195,7 +195,7 @@ class SalesforceApi(object):
                 for key, value in \
                     record if self.clientLib.NAME == 'toolkit' else \
                     record.items():
-                    if key == self.clientLib.RECORD_KEYS_TO_IGNORE:
+                    if key in self.clientLib.RECORD_KEYS_TO_IGNORE:
                         continue
                     row[key] = value
                 results.append(row)
