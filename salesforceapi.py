@@ -10,7 +10,7 @@ from dateutil.parser import parse as dateparse
 from simple_salesforce import Salesforce
 
 from vlib import conf
-from vlib.utils import echoized, uniqueId, validate_num_args
+from vlib.utils import echoized, str2datetime, uniqueId, validate_num_args
 
 DEBUG = 0
 VERBOSE = 0
@@ -215,15 +215,23 @@ class SalesforceApi(object):
     def modifyData(self, v):
         '''Modify/Fix up data if necessary'''
 
-        # Convert iso8601 dates in unicode to datetime:
-        if isinstance(v, unicode) and len(v)>=17:
-            # Quick parse:
-            if v[4]+v[7]+v[10]+v[13]+v[16] == '--T::':
-                return dateparse(v).replace(tzinfo=None)
+        if isinstance(v, unicode): 
 
-        # Convert string 'None' to None
-        if v == 'None':
-            return None
+            # Convert iso8601 dates in unicode to datetime:
+            #    eq. 2013-12-15T13:31:21.000+0000
+
+            if len(v)>=17:
+                # Quick parse:
+                if v[4]+v[7]+v[10]+v[13]+v[16] == '--T::':
+                    return dateparse(v).replace(tzinfo=None)
+
+            # Convert unicode dates to datetime 
+            #    eq. 2013-12-15
+
+            elif len(v) == 10:
+                # Quick parse:'
+                if v[4]+v[7] == '--' and (v[0:4]+v[5:7]+v[8:10]).isdigit():
+                    return str2datetime(v)
 
         # Not change
         return v
