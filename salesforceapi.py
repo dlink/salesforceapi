@@ -33,7 +33,7 @@ class SalesforceApi(object):
         self.verbose = VERBOSE
         self.conf = conf.Factory.create().data
         self.query_done = None
-        self.query_locator = None
+        self.next_records_url = None
 
     def process(self, *args):
         '''Read aguments and process API request
@@ -162,7 +162,7 @@ class SalesforceApi(object):
         #sf.setBatchSize()
 
         # get data
-        result =  sf.query_all(querystr)
+        result =  sf.query(querystr)
         return self.queryResults(result, format)
 
     def queryMore(self, format='tabular'):
@@ -170,7 +170,7 @@ class SalesforceApi(object):
            see: query()
         '''
         sf = self.connection
-        result = sf.queryMore(self.query_locator)
+        result = sf.query_more(self.next_records_url, True)
         return self.queryResults(result, format)
     
     def queryResults(self, result, format):
@@ -181,8 +181,8 @@ class SalesforceApi(object):
             raise Exception('SalesforceApi.Query: Unrecognized format: %s'
                             % format)
 
-        self.query_done  = result['done']
-        self.query_locator = None # not yet encountered a batch not big enough
+        self.query_done       = result['done']
+        self.next_records_url = result.get('nextRecordsUrl')
 
         if not result['totalSize']:
             return results
