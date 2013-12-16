@@ -6,6 +6,7 @@ import re
 import csv
 import copy
 
+from dateutil.parser import parse as dateparse
 from simple_salesforce import Salesforce
 
 from vlib import conf
@@ -196,7 +197,7 @@ class SalesforceApi(object):
                 for key, value in record.items():
                     if key in RECORD_KEYS_TO_IGNORE:
                         continue
-                    row[key] = value
+                    row[key] = self.modifyData(value)
                 results.append(row)
         else:
             # Note: assumption about header is wrong
@@ -206,10 +207,26 @@ class SalesforceApi(object):
             for record in records:
                 row = []
                 for key in header:
-                    row.append(getattr(record, key, None))
+                    row.append(self.modifyData(record.get(key)))
                 results.append(row)
 
         return results
+
+    def modifyData(self, v):
+        '''Modify/Fix up data if necessary'''
+
+        # Convert iso8601 dates in unicode to datetime:
+        if isinstance(v, unicode) and len(v)>=17:
+            # Quick parse:
+            if v[4]+v[7]+v[10]+v[13]+v[16] == '--T::':
+                return dateparse(v).replace(tzinfo=None)
+
+        # Convert string 'None' to None
+        if v == 'None':
+            return None
+
+        # Not change
+        return v
 
     def create(self, sfobject, header, rows):
         '''Create new Records. Calls update()'''
