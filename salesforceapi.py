@@ -320,28 +320,6 @@ class SalesforceApi(object):
         results += [success_msg, failure_msg]
         return results
 
-    """
-    def doAction(self, h, obj, action, try_count=0):
-        '''Provide Retry capability, to actual API call.'''
-        TRIES = 3
-        try_count += 1
-        if try_count > 1:
-            print 'retrying %s ...' % (try_count -1)
-        try:
-            if action == 'delete':
-                return h.delete(obj.Id)
-            elif action == 'create':
-                return h.create(obj)
-            else:
-                return h.update(obj)
-        except Exception, e:
-            print "%s: %s" % (e.__class__.__name__, e)
-            if 'INVALID_FIELD' in str(e) or 'INVALID_TYPE' in str(e):
-                raise
-            if try_count <= TRIES:
-                return self.doAction(h, obj, action, try_count)
-    """
-
     def loadCsv(self, csvfile):
         '''Given a csv filename
            Return a tuple: (header an ARRAY, and
