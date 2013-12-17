@@ -100,12 +100,6 @@ class SalesforceApi(object):
                                           security_token=token)
         return self._connection
 
-    #@property
-    #def wsdl_file(self):
-    #    '''Return full path to WSDL File'''
-    #    prog_base_dir = os.path.split(sys.argv[0])[0] or '.'
-    #    return '%s/%s' % (prog_base_dir, WSDL_FILE)
-
     def desc(self, sfobject):
         '''Return Brief Column Description of sfobject'''
 
