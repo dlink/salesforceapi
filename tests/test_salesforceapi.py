@@ -11,7 +11,7 @@ TEST_NAMES = ('All', 'SalesforceApi')
 
 # Fixtures
 TEST_USER_EMAIL = 'bi@flatworldknowledge.com'
-TEST_USER_ID     = '00530000006sBioAAE'
+TEST_USER_ID    = '00530000006sBioAAE'
 
 class TestSalesforceApi(unittest.TestCase):
     '''Test Conf'''
@@ -19,6 +19,14 @@ class TestSalesforceApi(unittest.TestCase):
     def setUp(self):
         from salesforceapi import SalesforceApi
         self.sf = SalesforceApi()
+
+    def test_fields(self):
+        results = self.sf.fields('contact')
+        self.assertEqual(results['id']['length'], 18) # id column lenght = 18
+
+    def test_desc(self):
+        results = self.sf.desc('user')
+        self.assertEqual(results[1][0:11], '2. Username')
 
     def test_query_tablular(self):
         soql = "select id, username from user where username = '%s'" \
@@ -49,7 +57,7 @@ class TestSalesforceApi(unittest.TestCase):
         soql = "select Id, Name from Topic where Name = '%s'" % test_str
         results = self.sf.query(soql, format='dict')
         self.assertEqual(results[0]['Name'], test_str)
-        self.sf.delete('note', ['Id'], [[results[0]['Id']]])
+        self.sf.delete('Topic', ['Id'], [[results[0]['Id']]])
 
 def syntax():
     progname = os.path.basename(sys.argv[0])
@@ -76,7 +84,6 @@ if __name__ == '__main__':
     suite = unittest.TestSuite()
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
     suite.addTests([loader(t) for t in tests])
-
     unittest.TextTestRunner(verbosity=2).run(suite)
 
 

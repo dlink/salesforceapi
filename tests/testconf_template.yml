@@ -5,4 +5,3 @@ salesforce:
    user:      admin@acme.com
    password:  peppermint
    token:     AABBPeppermintZZXX
-   wsdl_file: $HOME/salesforce/conf/enterprise.wsdl.xml
