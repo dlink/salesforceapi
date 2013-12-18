@@ -10,7 +10,8 @@ from dateutil.parser import parse as dateparse
 from simple_salesforce import Salesforce
 
 from vlib import conf
-from vlib.utils import echoized, str2datetime, uniqueId, validate_num_args
+from vlib.utils import echoized, str2datetime, format_datetime, uniqueId, \
+     validate_num_args
 
 DEBUG = 0
 VERBOSE = 0
@@ -290,9 +291,13 @@ class SalesforceApi(object):
                         % (field, sfobject))
 
                 # spec. handling by field types:
-                if fields[key]['type'] in ('date','double'):
+                if fields[key]['type'] == 'double':
                     if not value:
                         continue
+                elif fields[key]['type'] == 'date':
+                    if not value:
+                        continue
+                    value =format_datetime(str2datetime(value),format='ISO8601')
                 elif fields[key]['type'] in ('string'):
                     if value:
                         value = unicode(value, errors='ignore')
