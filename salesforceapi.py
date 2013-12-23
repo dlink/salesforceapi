@@ -449,7 +449,7 @@ def disp_results(results):
 if __name__ == '__main__':
     sf = SalesforceApi()
     args = copy.copy(sys.argv[1:])
-    if args[0] == '-v':
+    if args and args[0] == '-v':
         VERBOSE = True
     
     try:
