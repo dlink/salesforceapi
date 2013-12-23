@@ -297,7 +297,7 @@ class SalesforceApi(object):
                 elif fields[key]['type'] == 'date':
                     if not value:
                         continue
-                    value =format_datetime(str2datetime(value),format='ISO8601')
+                    value=format_datetime(str2datetime(value),format='ISO8601')
                 elif fields[key]['type'] in ('string'):
                     if value:
                         value = unicode(value, errors='ignore')
@@ -305,19 +305,24 @@ class SalesforceApi(object):
                 # Set value:
                 data[field] = value
 
-            if action == 'delete':
-                result = obj.delete(object_id)
-            elif action == 'create':
-                result = obj.create(data)
-            else:
-                result = obj.update(object_id, data)
+            try:
+                if action == 'delete':
+                    result = obj.delete(object_id)
+                elif action == 'create':
+                    result = obj.create(data)
+                else:
+                    result = obj.update(object_id, data)
+            except Exception, e:
+                result = {'errors': [{'message': e.__class__.__name__},
+                                     {'message': str(e)}]}
 
             SUCCESS_CODES = [204,]
             if (isinstance(result, int) and result in SUCCESS_CODES) \
-               or result['success']:
+               or result.get('success'):
                 successes.append(row + [past_tense_action_str(action)])
             else:
-                emsg = '. '.join([e.message for e in result.errors])
+                #emsg = '. '.join([e.message for e in result.errors])
+                emsg = '. '.join([e['message'] for e in result['errors']])
                 failures.append(row + [emsg])
 
             if rcnt and rcnt % IND_PROGRESS_INTERVAL == 0:
