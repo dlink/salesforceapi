@@ -297,7 +297,7 @@ class SalesforceApi(object):
                 elif fields[key]['type'] == 'date':
                     if not value:
                         continue
-                    value=format_datetime(str2datetime(value),format='ISO8601')
+                    value=format_datetime(dateparse(value),format='ISO8601')
                 elif fields[key]['type'] in ('string'):
                     if value:
                         value = unicode(value, errors='ignore')
