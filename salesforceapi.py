@@ -5,6 +5,7 @@ import os
 import re
 import csv
 import copy
+import urllib
 
 from dateutil.parser import parse as dateparse
 from simple_salesforce import Salesforce
@@ -17,7 +18,8 @@ DEBUG = 0
 VERBOSE = 0
 IND_PROGRESS_INTERVAL = 50
 
-COMMANDS = ('create', 'delete', 'desc', 'fields', 'query', 'show', 'update')
+COMMANDS = ('create', 'delete', 'deleted', 'desc', 'fields', 'query',
+            'show', 'update')
 SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
              'Lead', 'Opportunity', 'User', 'Task')
 CUSTOMOBJECTS = ('Adoption',)
@@ -83,7 +85,12 @@ class SalesforceApi(object):
                 return self.create(sfobject, header, rows)
             else:
                 return self.update(sfobject, header, rows)
-
+        elif command == 'deleted':
+            validate_num_args('deleted', 3, args)
+            sfobject = args[0]
+            from_date = args[1]
+            to_date = args[2]
+            return self.deleted(sfobject, from_date, to_date)
         else:
             raise SalesforceApiError('Unrecognized command: %s' % command)
 
@@ -138,6 +145,21 @@ class SalesforceApi(object):
                             'length': field['length'],
                             'name': field['name'],
                             'position': i+1}
+        return results
+
+    def deleted(self, sfobject, from_date, to_date):
+        '''Return a LIST of LIST of sfobject records
+           deleted in the range of dates given
+        '''
+        from_date2 = str2datetime(from_date).isoformat() + 'Z'
+        to_date2   = str2datetime(to_date).isoformat() + 'Z'
+
+        sf = self.connection
+        result = sf.__getattr__(sfobject).deleted(urllib.quote(from_date2),
+                                                  urllib.quote(to_date2  ))
+        results = []
+        for i, field in enumerate(result['deletedRecords']):
+            results.append([field['id'], field['deletedDate']])
         return results
 
     def query(self, querystr, format='tabular'):
@@ -428,6 +450,7 @@ def syntax(emsg=None):
     print
     print "   %s [-v] create <object> <csvfile>" % prog_name
     print "   %s      delete <object> <csvfile>" % ws
+    print "   %s      deleted <object> <from_date> <to_date>" % ws
     print "   %s      desc <object>"             % ws
     print "   %s      fields <object>"           % ws
     print "   %s      query <querystring>"       % ws
