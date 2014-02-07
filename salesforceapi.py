@@ -21,8 +21,8 @@ IND_PROGRESS_INTERVAL = 50
 COMMANDS = ('create', 'delete', 'deleted', 'desc', 'fields', 'query',
             'show', 'update')
 SFOBJECTS = ('Account', 'Adoption', 'CampaignMember', 'Case', 'Contact', 
-             'Lead', 'Opportunity', 'User', 'Task')
-CUSTOMOBJECTS = ('Adoption',)
+             'Lead', 'Opportunity', 'User', 'Task', 'Desk_Copy')
+CUSTOMOBJECTS = ('Adoption', 'Desk_Copy')
 
 RECORD_KEYS_TO_IGNORE = ['attributes']
 
