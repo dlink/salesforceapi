@@ -20,8 +20,9 @@ IND_PROGRESS_INTERVAL = 50
 
 COMMANDS = ('create', 'delete', 'deleted', 'desc', 'fields', 'query',
             'show', 'update')
-SFOBJECTS = ('Account', 'Adoption', 'Book', 'CampaignMember', 'Case',
-             'Contact', 'Lead', 'Opportunity', 'User', 'Task', 'Desk_Copy')
+SFOBJECTS = ('Account', 'Adoption', 'Book', 'CampaignMember', 'Campaign',
+             'Case', 'Contact', 'Lead', 'Opportunity',
+             'OpportunityContactRole', 'User', 'Task', 'Desk_Copy')
 CUSTOMOBJECTS = ('Adoption', 'Book', 'Desk_Copy')
 
 RECORD_KEYS_TO_IGNORE = ['attributes']
@@ -58,7 +59,8 @@ class SalesforceApi(object):
         # process command
         if command in ('desc', 'fields'):
             validate_num_args(command, 1, args)
-            sfobject = self.validate('sfobject', args[0])
+            #sfobject = self.validate('sfobject', args[0])
+            sfobject = args[0]
             if command == 'desc':
                 return self.desc(sfobject)
             else:
@@ -461,7 +463,7 @@ def syntax(emsg=None):
 
 def disp_results(results):
     if isinstance(results, (list, tuple)):
-        if isinstance(results[0], (list, tuple)):
+        if len(results) and isinstance(results[0], (list, tuple)):
             for row in results:
                 print ",".join(map(str, row)),
                 print
