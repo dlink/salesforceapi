@@ -18,7 +18,7 @@ DEBUG = 0
 VERBOSE = 0
 IND_PROGRESS_INTERVAL = 50
 
-COMMANDS = ('create', 'delete', 'deleted', 'desc', 'fields', 'query',
+COMMANDS = ('create', 'delete', 'deleted', 'desc', 'fields', 'query', 'queryAll',
             'show', 'update')
 SFOBJECTS = ('Account', 'Adoption', 'Book', 'CampaignMember', 'Campaign',
              'Case', 'Contact', 'Lead', 'Opportunity',
@@ -66,10 +66,14 @@ class SalesforceApi(object):
             else:
                 return self.fields(sfobject)
 
-        elif command == 'query':
+        elif command in ('query', 'queryAll'):
             validate_num_args(command, 1, args)
             querystr = self.validate('querystr', args[0])
-            return self.query(querystr)
+            if command == 'query':
+                return self.query(querystr)
+            else:
+                from salesforceapi2 import SalesforceApi2
+                return SalesforceApi2().queryAll(querystr)
             
         elif command == 'show':
             validate_num_args(command, 1, args)
@@ -100,6 +104,8 @@ class SalesforceApi(object):
     def connection(self):
         '''Behavior: Log in to Salesforce
            Return: Handle to connection
+
+           Uses Python Simple-Salesforce
         '''
         if '_connection' not in self.__dict__:
             user      = self.conf['salesforce']['user']
@@ -109,6 +115,27 @@ class SalesforceApi(object):
                                           password=password,
                                           security_token=token)
         return self._connection
+
+    @property
+    def connection2(self):
+        '''Behavior: Log in to Salesforce
+           Return: Handle to connection
+
+           Uses Salesforce Python Toolkit
+
+           connection2 used for queryAll functionality not supported
+           by Python Simple-Salesforce
+        '''
+        if '_connection2' not in self.__dict__:
+            user      = self.conf['salesforce']['user']
+            password  = self.conf['salesforce']['password']
+            token     = self.conf['salesforce']['token']
+            wsdl_file = self.conf['salesforce']['wsdl_file']
+            h = SforceEnterpriseClient(wsdl_file)
+            h.login(user, password, token)
+
+            self._connection2 = h
+        return self._connection2
 
     def desc(self, sfobject):
         '''Return Brief Column Description of sfobject'''
@@ -456,6 +483,7 @@ def syntax(emsg=None):
     print "   %s      desc <object>"             % ws
     print "   %s      fields <object>"           % ws
     print "   %s      query <querystring>"       % ws
+    print "   %s      queryAll <querystring> # <-- Include logical deletions" % ws
     print "   %s      show objects"              % ws
     print "   %s      update <object> <csvfile>" % ws
     print
