@@ -72,8 +72,7 @@ class SalesforceApi(object):
             if command == 'query':
                 return self.query(querystr)
             else:
-                from salesforceapi2 import SalesforceApi2
-                return SalesforceApi2().queryAll(querystr)
+                return self.queryAll(querystr)
             
         elif command == 'show':
             validate_num_args(command, 1, args)
@@ -190,6 +189,10 @@ class SalesforceApi(object):
         for i, field in enumerate(result['deletedRecords']):
             results.append([field['id'], field['deletedDate']])
         return results
+
+    def queryAll(self, querystr, format='tabular'):
+        from salesforceapi2 import SalesforceApi2
+        return SalesforceApi2().queryAll(querystr, format)
 
     def query(self, querystr, format='tabular'):
         '''Return results of a querystr
