@@ -496,7 +496,6 @@ def disp_results(results):
     if isinstance(results, (list, tuple)):
         if len(results) and isinstance(results[0], (list, tuple)):
             for row in results:
-                #print [x.encode('ascii', 'replace') for x in row]
                 print ",".join(map(str, [x.encode('latin1', 'replace')
                                          for x in row]))
         else:
